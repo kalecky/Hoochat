@@ -4,8 +4,6 @@ package application;
  *
  */
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;     //To handle user input from console
 import java.io.IOException;        //If error with I/O
 import java.io.InputStream;
@@ -20,6 +18,11 @@ import java.io.Console;
  */
 public class MessageClient {
 	private static Socket socket = null;
+	private static Scanner scanner = null;
+	private static BufferedReader bf = null;
+	private static InputStream sockIn = null;
+	private static OutputStream sockOut = null;
+	private static String user;
 	
 	public static void main(String [] args){
 		//Expecting 2 total command line parameters
@@ -45,58 +48,101 @@ public class MessageClient {
 	
 	
 		//Start client application/Login process
-		try{
-			//Open Streams
-			Scanner scanner = new Scanner(System.in);
-			BufferedReader bf = new BufferedReader(
-					        new InputStreamReader(System.in));
-			//InputStream sockIn = new BufferedInputStream(socket.getInputStream());
-			//OutputStream sockOut = new BufferedOutputStream(socket.getOutputStream());
-			String user, pass;
-			boolean loginAttempt = true;
-			boolean login = false;
-			
-			//Prompt user to login
-			while(loginAttempt){
-				System.out.println("Login");
-				System.out.print("Email: ");
-				user = bf.readLine();
-				System.out.print("Password: ");
-			    pass = bf.readLine();
-
-			    /******Send login request*****/
-			    
-			    //Check login success
-			    if(!login){
-			    	System.out.println("Incorrect User or Password!");
-			    	System.out.println("Would you like to try again? (y/n)");
-			    	boolean flag = true;
-			    	while(flag){
-				    	switch(scanner.nextLine()){
-				    		case "y":
-				    		case "Y":
-				    			loginAttempt = true;
-				    			flag = false;
-				    			break;
-				    		case "n":
-				    		case "N":
-				    			clientTerminate();
-				    		default:
-				    			flag = true;
-				    	}
-			    	}
-			    }
-			}
-			
-			while(true){
-				System.out.print("Please make a selection:\n");
-				String operation = bf.readLine(); // Read Operation
+		while(true){
+			try{
+				//Open Streams
+				scanner = new Scanner(System.in);
+				bf = new BufferedReader(
+						        new InputStreamReader(System.in));
+				//InputStream sockIn = new BufferedInputStream(socket.getInputStream());
+				//OutputStream sockOut = new BufferedOutputStream(socket.getOutputStream());
+				String pass;
+				boolean loginAttempt = true;
+				boolean login = false;
 				
+				//Prompt user to login
+				while(loginAttempt){
+					System.out.println("Login");
+					System.out.print("Email: ");
+					user = bf.readLine();
+					System.out.print("Password: ");
+				    pass = bf.readLine();
+	
+				    /******Send login request*****/
+				    login = true; //Set true for testing purposes
+				    
+				    //Check login success
+				    if(!login){
+				    	System.out.println("Incorrect User or Password!");
+				    	System.out.println("Would you like to try again? (y/n)");
+				    	boolean flag = true;
+				    	
+				    	while(flag){
+					    	switch(scanner.nextLine()){
+					    		case "y":
+					    		case "Y":
+					    			loginAttempt = true;
+					    			flag = false;
+					    			break;
+					    		case "n":
+					    		case "N":
+					    			clientTerminate();
+					    		default:
+					    			flag = true;
+					    	}
+				    	}
+				    }else{
+				    	System.out.println("Successfully Logged In!");
+				    	loginAttempt = false;
+				    }
+				}
+				
+				while(login){
+					operationPrompt();
+					String operation = bf.readLine(); // Read Operation
+					switch(operation){
+						case "1": //Check for new messages
+							checkMessages();
+							break;
+						case "2": //Send message
+							sendMessage();
+							break;
+						case "3": //Logout
+							login = false;
+							logout();
+							break;
+						default:
+							System.out.println("Invalid selection! Please try "
+												+ "again.");
+					}
+				}
+			}catch(IOException e){
+				System.err.print("Unable to communicate: " + e.getMessage());
+				e.printStackTrace();
 			}
-		}catch(IOException e){
-			System.err.print("Unable to communicate: " + e.getMessage());
-			e.printStackTrace();
 		}
+	}
+	
+	static void checkMessages(){
+		//Make pull request to server
+	}
+	
+	static void sendMessage(){
+		System.out.println("Send Message: ");
+		
+		System.out.print("Enter Receiver Email: ");
+		String rcvr = scanner.nextLine().trim();
+		
+		System.out.print("Enter Message:\n");
+		String msg = scanner.nextLine();
+		
+		//Send Message
+		//Prompt user if message was sent successfully or not
+		
+	}
+	
+	static void logout(){
+		//Logout user, sever socket connection
 	}
 	
 	static void clientTerminate(){
@@ -105,6 +151,9 @@ public class MessageClient {
 	}
 	
 	static void operationPrompt(){
-		
+		System.out.println("\nLogged in as " + user);
+		System.out.println("Operations:\n1) Check for new messages"
+							+ "\n2) Send Message\n3) Logout");
+		System.out.print(">");
 	}
 }
