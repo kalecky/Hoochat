@@ -1,0 +1,21 @@
+package edu.baylor.cs.hoochat;
+
+public enum PacketType {
+	
+	LOGIN_REQUEST (1),
+	LOGIN_RESPONSE (2),
+	LOGOUT_REQUEST (3),
+	LOGOUT_RESPONSE (4),
+	SEND_REQUEST (5),
+	SEND_RESPONSE (6),
+	PULL_REQUEST (7),
+	PULL_RESPONSE (8),
+	REMOVE_REQUEST (9),
+	REMOVE_RESPONSE (10),
+	NEWMESSAGE_PUSH (11),
+	;
+	
+	private final int value;
+	PacketType (int value) { this. value = value; }
+	
+}
