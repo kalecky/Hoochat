@@ -1,8 +1,11 @@
-package edu.baylor.cs.hoochat;
+#ifndef __PacketType_h
+#define __PacketType_h
 
-public class PacketType {
-	
-	public static final int
+
+static class PacketType {
+public:
+
+	static const int
 		LOGIN_REQUEST = 1,
 		LOGIN_RESPONSE = 2,
 		LOGOUT_REQUEST = 3,
@@ -16,4 +19,7 @@ public class PacketType {
 		NEWMESSAGE_PUSH = 11
 	;
 	
-}
+};
+
+
+#endif  // __PacketType_h
