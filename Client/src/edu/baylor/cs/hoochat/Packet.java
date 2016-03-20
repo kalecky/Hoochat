@@ -9,10 +9,12 @@ public class Packet {
 	long SID;
 	int type;
 	int length;
-	List<String> data = new ArrayList<String> ();
+	List<String> data;
 	
-	public Packet (long SID, int type, int size) {
-		
+	public Packet (long SID, int type, int length) {
+		setSID (SID);
+		setType (type);
+		setLength (length);
 	}
 
 	public long getSID() {
@@ -40,8 +42,14 @@ public class Packet {
 		this.data = data;
 	}
 	
+	// Initializes packet based on its 16-byte header data
+	static public Packet initialize (byte[] header) {
+		return header. length >= 16 ? new Packet (header [0] | (header [1] << 8) | (header [2] << 16) | (header [3] << 24) | (header [4] << 32) | (header [5] << 40) | (header [6] << 48) | (header [7] << 56), (header [8] | (header [9] << 8) | (header [10] << 16) | (header [11] << 24)), header [12] | (header [13] << 8) | (header [14] << 16) | (header [15] << 24)) : null;
+	}
+	
+	// Reads and decodes packet data
 	public boolean parseData(byte[] data, int offset, int length) {
-		this. data. clear();
+		this. data = new ArrayList<> ();
 		byte [] bytes = new byte [length];
 		int bytes_pos = 0;
 		byte last = 0;
@@ -49,11 +57,11 @@ public class Packet {
 		for (int i = offset; i != offset + length; ++i) {
 			if (data [i] >= 65 && data [i] <= 80) {
 				if (first = !first) {
-					bytes [bytes_pos++] = (byte) ((last - 64) | ((data [i] - 64) << 4));
+					bytes [bytes_pos++] = (byte) ((last - 65) | ((data [i] - 65) << 4));
 				} else {					
 					last = data [i];
 				}
-			} else if (data [i] == 10) {
+			} else if (data [i] == 88) {
 				if (bytes_pos != 0) {
 					try {
 						this. data. add (new String (bytes, 0, bytes_pos, "UTF-8"));
@@ -62,36 +70,50 @@ public class Packet {
 						return false;
 					}
 				}
-			} else if (data [i] != 13) {
-				return false;
-			}
-		}
-		if (bytes_pos != 0) {
-			try {
-				this. data. add (new String (bytes, 0, bytes_pos, "UTF-8"));
-				bytes_pos = 0;
-			} catch (UnsupportedEncodingException e) {
+			} else {
 				return false;
 			}
 		}
 		return true;
 	}
 	
-	// TODO
-	public byte[] serialize () {
+	// Gets byte representation of the packet
+	public byte[] serialize () { 
 		byte[][] bytes = new byte[data.size()][];
+		int message_length = 16;
 		for (int i = 0; i != data. size (); ++i) {
 			try {
-				bytes [i] = data. get (i). getBytes ("UTF-8");
+				message_length += (bytes [i] = data. get (i). getBytes ("UTF-8")). length * 2 + 1; 
 			} catch (UnsupportedEncodingException e) {
 				return null;
 			}
 		}
-	}
-	
-	// To be fetched with 16-byte header data
-	static public Packet initialize (byte[] header) {
-		return header. length == 16 ? new Packet (header [0] | (header [1] << 8) | (header [2] << 16) | (header [3] << 24) | (header [4] << 32) | (header [5] << 40) | (header [6] << 48) | (header [7] << 56), (header [8] | (header [9] << 8) | (header [10] << 16) | (header [11] << 24)), header [12] | (header [13] << 8) | (header [14] << 16) | (header [15] << 24)) : null;
+		byte[] message = new byte[message_length];
+		message [0] = (byte) (SID >> 0);
+		message [1] = (byte) (SID >> 8);
+		message [2] = (byte) (SID >> 16);
+		message [3] = (byte) (SID >> 24);
+		message [4] = (byte) (SID >> 32);
+		message [5] = (byte) (SID >> 40);
+		message [6] = (byte) (SID >> 48);
+		message [7] = (byte) (SID >> 56);
+		message [8] = (byte) (type >> 0);
+		message [9] = (byte) (type >> 8);
+		message [10] = (byte) (type >> 16);
+		message [11] = (byte) (type >> 24);
+		message [12] = (byte) (length >> 0);
+		message [13] = (byte) (length >> 8);
+		message [14] = (byte) (length >> 16);
+		message [15] = (byte) (length >> 24);
+		int message_pos = 16;
+		for (byte[] byteline : bytes) {
+			for (byte b : byteline) {
+				message[message_pos++] = (byte) ((b & 0xf) + 65);
+				message[message_pos++] = (byte) (((b >> 4) & 0xf) + 65);
+			}
+			message[message_pos++] = 88;
+		}
+		return message;
 	}
 	
 }
