@@ -1,159 +1,180 @@
-package application;
 /* Author:    Aaron D. Salinas <aaron_salinas@baylor.edu>
  *
  *
  */
 
-import java.io.BufferedReader;     //To handle user input from console
-import java.io.IOException;        //If error with I/O
-import java.io.InputStream;
-import java.io.InputStreamReader;  //To read user input from console
-import java.io.OutputStream;
-import java.net.Socket;            //To connect to server
-import java.util.Scanner;
-import java.io.Console;
+package application;
+
+
+import java.io.*; 					//For Stream Reading/Writing
+import java.util.Random;
 
 /**
  * @author Aaron D. Salinas
  */
 public class MessageClient {
-	private static Socket socket = null;
-	private static Scanner scanner = null;
+	
 	private static BufferedReader bf = null;
-	private static InputStream sockIn = null;
-	private static OutputStream sockOut = null;
+	private static MessageClientHandler clientHandler;
 	private static String user;
 	
-	public static void main(String [] args){
-		//Expecting 2 total command line parameters
-		//if(args.length != 2){
-		//	throw new IllegalArgumentException("Parameter(s): "
-				//	                            + "<Server> <Port>");
-		//}
-		
-		//Store command line arguments
-		//String server = args[0]; //Store Server
-		//int servPort   = Integer.parseInt(args[1]); //Store Port Numbers
-		
-		/*
-		try{
-			// Create socket that is connected to server on specified port
-			socket = new Socket(server, servPort);
-		}catch(IOException e){
-			System.err.print("Unable to communicate: Failure connecting "
-					+ "to server " + server + " on port " + servPort + "\n");
-			System.exit(1); //Terminate program if no connection to server
-		}
-		*/
 	
-	
-		//Start client application/Login process
+	public static void main(String [] args) throws IOException{		
+		init(args); //Initialize Client Program
+		
+		System.out.println("HooNet Client App 1.0"); 
+		
+		//Run until user exits
 		while(true){
-			try{
-				//Open Streams
-				scanner = new Scanner(System.in);
-				bf = new BufferedReader(
-						        new InputStreamReader(System.in));
-				//InputStream sockIn = new BufferedInputStream(socket.getInputStream());
-				//OutputStream sockOut = new BufferedOutputStream(socket.getOutputStream());
-				String pass;
-				boolean loginAttempt = true;
-				boolean login = false;
-				
-				//Prompt user to login
-				while(loginAttempt){
-					System.out.println("Login");
-					System.out.print("Email: ");
-					user = bf.readLine();
-					System.out.print("Password: ");
-				    pass = bf.readLine();
-	
-				    /******Send login request*****/
-				    login = true; //Set true for testing purposes
-				    
-				    //Check login success
-				    if(!login){
-				    	System.out.println("Incorrect User or Password!");
-				    	System.out.println("Would you like to try again? (y/n)");
-				    	boolean flag = true;
-				    	
-				    	while(flag){
-					    	switch(scanner.nextLine()){
-					    		case "y":
-					    		case "Y":
-					    			loginAttempt = true;
-					    			flag = false;
-					    			break;
-					    		case "n":
-					    		case "N":
-					    			clientTerminate();
-					    		default:
-					    			flag = true;
-					    	}
-				    	}
-				    }else{
-				    	System.out.println("Successfully Logged In!");
-				    	loginAttempt = false;
-				    }
-				}
-				
-				while(login){
-					operationPrompt();
-					String operation = bf.readLine(); // Read Operation
-					switch(operation){
-						case "1": //Check for new messages
-							checkMessages();
-							break;
-						case "2": //Send message
-							sendMessage();
-							break;
-						case "3": //Logout
-							login = false;
-							logout();
-							break;
-						default:
-							System.out.println("Invalid selection! Please try "
-												+ "again.");
+			//Initial App Menu
+			System.out.println("\nPlease Make a Selection:\n(1) Login\n(q) Quit");
+			System.out.print("> ");
+			switch(bf.readLine().trim()){
+				case "1":
+					if(login()){ //If user logs in successfully, start session
+						boolean session = true;
+						while(session){ //Continue while user in session
+							operationPrompt(); //Prompt user selection
+							String operation = bf.readLine().trim(); //Read Operation
+							switch(operation){
+								case "1": //Check for new messages
+									checkMessages();
+									break;
+								case "2": //Send message
+									sendMessage();
+									break;
+								case "3": //Logout
+									session = false;
+									logout();
+									break;
+								case "q":
+								case "Q":
+									session = false;
+									logout();
+									kill();
+								default:
+									System.out.println("Invalid selection! "
+														+ "Please try again.");
+							}
+						}	
 					}
-				}
-			}catch(IOException e){
-				System.err.print("Unable to communicate: " + e.getMessage());
-				e.printStackTrace();
+					break;
+				
+				case "q":
+						kill(); //Exit the program
+					break;
+				default:
+					System.out.println("Invalid Selection!\n");
 			}
 		}
 	}
 	
-	static void checkMessages(){
+	
+	private static void init(String [] args){
+		//Expecting 2 total command line parameters
+		if(args.length != 2){
+			throw new IllegalArgumentException("Parameter(s): "
+					                            + "<Server> <Port>");
+		}
+		//Store command line arguments
+		String server = args[0]; //Store Server
+		int servPort = Integer.parseInt(args[1]); //Store Port Numbers
+		
+		//Open Console Readers
+		bf = new BufferedReader(new InputStreamReader(System.in));
+		
+		//Connect to the server
+		clientHandler = new MessageClientHandler(server, servPort);
+		
+	}
+	
+	private static void kill(){
+		//Close open streams
+		try {
+			bf.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println("***Client Terminated***");
+		System.exit(0); //Kill Application
+	}
+	
+	private static boolean login() throws IOException{
+		boolean loginAttempt = true;
+		boolean login = false;
+		
+		//Prompt user to login
+		while(loginAttempt){
+			System.out.println();
+			System.out.println("Login");
+			System.out.print("Email: ");
+			user = bf.readLine();
+			System.out.print("Password: ");
+		    String pass = bf.readLine();
+
+		    /******Send login request*****/
+		    Random rand = new Random();
+		    login = clientHandler.LoginRequest(user, pass, rand.nextLong());
+		    
+		    //Check login success
+		    if(!login){
+		    	System.out.println("Incorrect User or Password!");
+		    	System.out.println("Would you like to try again? (y/n)");
+		    	boolean flag = true;
+		    	
+		    	while(flag){
+			    	switch(bf.readLine()){
+			    		case "y":
+			    		case "Y":
+			    			loginAttempt = true;
+			    			flag = false;
+			    			break;
+			    		case "n":
+			    		case "N":
+			    			kill();
+			    		default:
+			    			flag = true;
+			    	}
+		    	}
+		    }else{
+		    	System.out.println("Successfully Logged In! Session Started");
+		    	return true;
+		    }
+		}
+		return false;
+	}
+	
+	private static void checkMessages(){
+		//TODO
 		//Make pull request to server
 	}
 	
-	static void sendMessage(){
+	private static void sendMessage() throws IOException{
+		System.out.println();
 		System.out.println("Send Message: ");
 		
 		System.out.print("Enter Receiver Email: ");
-		String rcvr = scanner.nextLine().trim();
+		String rcvr = bf.readLine().trim();
 		
 		System.out.print("Enter Message:\n");
-		String msg = scanner.nextLine();
+		String msg = bf.readLine().trim();
 		
-		//Send Message
-		//Prompt user if message was sent successfully or not
+		//TODO
+		//Send Message Packet to server
 		
 	}
 	
-	static void logout(){
-		//Logout user, sever socket connection
+	private static void logout(){
+		user = null;
+		
+		//TODO
+		//Send Logout Packet to Server
 	}
 	
-	static void clientTerminate(){
-		System.out.println("***Client Terminated***");
-		System.exit(0);
-	}
-	
-	static void operationPrompt(){
+	private static void operationPrompt(){
 		System.out.println("\nLogged in as " + user);
-		System.out.println("Operations:\n1) Check for new messages"
-							+ "\n2) Send Message\n3) Logout");
-		System.out.print(">");
+		System.out.println("Operations:\n(1) Check for new messages"
+							+ "\n(2) Send Message\n(3) Logout\n(q) Quit");
+		System.out.print("> ");
 	}
 }
