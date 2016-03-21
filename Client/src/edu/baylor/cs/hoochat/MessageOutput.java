@@ -7,7 +7,7 @@
  * Version:   1.0
  * Copyright: CSI 4321 Data Communications, Baylor University
  */
-package application;
+package edu.baylor.cs.hoochat;
 
 import java.io.IOException;  //Used if an I/O error occurs
 import java.io.OutputStream; //Class is a wrapper for an OutputStream source

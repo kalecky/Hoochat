@@ -15,15 +15,16 @@ class Packet {
 	int type;
 	int length;
 	vector<string> data;
-	
-public:
+
 	Packet (__int64_t SID, int type, int length) {
 		setSID (SID);
 		setType (type);
 		setLength (length);
 	}
-	Packet (byte* header) : Packet (header [0] | (header [1] << 8) | (header [2] << 16) | (header [3] << 24) | (header [4] << 32) | (header [5] << 40) | (header [6] << 48) | (header [7] << 56), (header [8] | (header [9] << 8) | (header [10] << 16) | (header [11] << 24)), header [12] | (header [13] << 8) | (header [14] << 16) | (header [15] << 24)) {
-	}
+
+public:
+	Packet (__int64_t SID, int type) : Packet (SID, type, 0) { }
+	Packet (byte* header) : Packet (header [0] | (header [1] << 8) | (header [2] << 16) | (header [3] << 24) | (header [4] << 32) | (header [5] << 40) | (header [6] << 48) | (header [7] << 56), (header [8] | (header [9] << 8) | (header [10] << 16) | (header [11] << 24)), header [12] | (header [13] << 8) | (header [14] << 16) | (header [15] << 24)) { }
 
 	__int64_t getSID() {
 		return SID;
@@ -40,9 +41,13 @@ public:
 	int getLength() {
 		return length;
 	}
+
+private:
 	void setLength(int length) {
 		this-> length = length;
 	}
+
+public:
 	vector<string> getData() {
 		return data;
 	}
@@ -109,10 +114,10 @@ public:
 		message [9] = (byte) (type >> 8);
 		message [10] = (byte) (type >> 16);
 		message [11] = (byte) (type >> 24);
-		message [12] = (byte) (length >> 0);
-		message [13] = (byte) (length >> 8);
-		message [14] = (byte) (length >> 16);
-		message [15] = (byte) (length >> 24);
+		message [12] = (byte) ((message_length - 16) >> 0);
+		message [13] = (byte) ((message_length - 16) >> 8);
+		message [14] = (byte) ((message_length - 16) >> 16);
+		message [15] = (byte) ((message_length - 16) >> 24);
 		int message_pos = 16;
 		for (auto* byteline = bytes; byteline != bytes + data. size (); ++byteline) {
 			for (auto* b = *byteline; b; ++b) {

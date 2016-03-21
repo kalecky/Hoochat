@@ -10,8 +10,12 @@ public class Packet {
 	int type;
 	int length;
 	List<String> data;
-	
-	public Packet (long SID, int type, int length) {
+
+	public Packet (long SID, int type) {
+		setSID (SID);
+		setType (type);
+	}
+	private Packet (long SID, int type, int length) {
 		setSID (SID);
 		setType (type);
 		setLength (length);
@@ -32,7 +36,7 @@ public class Packet {
 	public int getLength() {
 		return length;
 	}
-	public void setLength(int length) {
+	private void setLength(int length) {
 		this.length = length;
 	}
 	public List<String> getData() {
@@ -101,10 +105,10 @@ public class Packet {
 		message [9] = (byte) (type >> 8);
 		message [10] = (byte) (type >> 16);
 		message [11] = (byte) (type >> 24);
-		message [12] = (byte) (length >> 0);
-		message [13] = (byte) (length >> 8);
-		message [14] = (byte) (length >> 16);
-		message [15] = (byte) (length >> 24);
+		message [12] = (byte) ((message_length - 16) >> 0);
+		message [13] = (byte) ((message_length - 16) >> 8);
+		message [14] = (byte) ((message_length - 16) >> 16);
+		message [15] = (byte) ((message_length - 16) >> 24);
 		int message_pos = 16;
 		for (byte[] byteline : bytes) {
 			for (byte b : byteline) {

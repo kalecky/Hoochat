@@ -7,7 +7,7 @@
  * Version:   1.0
  * Copyright: CSI 4321 Data Communications, Baylor University
  */
-package application;
+package edu.baylor.cs.hoochat;
 
 import java.io.EOFException;  //If premature end of input
 import java.io.IOException;   //If an IO Error occurs while using input stream

@@ -3,7 +3,7 @@
  *
  */
 
-package application;
+package edu.baylor.cs.hoochat;
 
 
 import java.io.*; 					//For Stream Reading/Writing
@@ -114,7 +114,7 @@ public class MessageClient {
 
 		    /******Send login request*****/
 		    Random rand = new Random();
-		    login = clientHandler.LoginRequest(user, pass, rand.nextLong());
+		    login = clientHandler.LoginRequest(user, pass);
 		    
 		    //Check login success
 		    if(!login){
