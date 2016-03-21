@@ -36,14 +36,29 @@ public class MessageClientHandler {
 		packet.getData().add(pass);
 		byte[] data = packet.serialize();
 		
-		// send byte[] data
 		
-		// receive byte[] read
+		try { 
+			// send byte[] data
+			out.write(data);
 		
-		byte[] read = null;
-		Packet reply = Packet. initialize (read);
-		reply. parseData (data, 16, read. length - 16);
-		return (sessionID = reply.getSID()) != -1;
+			//Handle Reply
+			//Store header
+			byte[] hdr  = in.readHeader();
+			Packet reply = Packet. initialize (hdr);
+			
+			//Store Data
+			byte[] rcvData = in.readData(reply.getLength());
+			byte[] pktByte = concateHdrData(hdr, rcvData);
+			reply.parseData(pktByte, 16, reply.length);
+			
+			
+			return (sessionID = reply.getSID()) != -1;
+			
+		}catch (IOException e){
+			System.err.println(e.getMessage());
+		}
+		
+		return false; //Not reached unless error occurs
 	}
 	
 	public boolean sendRequest(String recipient, String message){
@@ -53,13 +68,25 @@ public class MessageClientHandler {
 		byte[] data = packet.serialize();
 
 		// send data
-
-		// receive byte[] read
+		try {
+			out.write(data); //Send the packet to the server
+			
+			//Handle the reply
+			//Store header
+			byte[] hdr  = in.readHeader();
+			Packet reply = Packet. initialize (hdr);
+			
+			//Store Data
+			byte[] rcvData = in.readData(reply.getLength());
+			byte[] pktByte = concateHdrData(hdr, rcvData);
+			reply.parseData(pktByte, 16, reply.length);
+			
+			return sessionID == reply. getSID () && reply. getType () == PacketType. LOGIN_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";
+		} catch (IOException e) {
+			System.err.println(e.getMessage());
+		}
 		
-		byte[] read = null;
-		Packet reply = Packet. initialize (read);
-		reply. parseData (data, 16, read. length - 16);
-		return sessionID == reply. getSID () && reply. getType () == PacketType. LOGIN_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";
+		return false;
 	}
 	
 	public void PullRequest(Integer mid){
@@ -100,14 +127,29 @@ public class MessageClientHandler {
 		Packet packet = new Packet (sessionID, PacketType. LOGOUT_REQUEST);
 		byte[] data = packet.serialize();
 
-		// send data
-
-		// receive byte[] read
+		try { 
+			// send byte[] data
+			out.write(data);
 		
-		byte[] read = null;
-		Packet reply = Packet. initialize (read);
-		reply. parseData (data, 16, read. length - 16);
-		return sessionID == reply. getSID () && reply. getType () == PacketType. LOGOUT_RESPONSE;
+			//Handle Reply
+			
+			//Store header
+			byte[] hdr  = in.readHeader();
+			Packet reply = Packet. initialize (hdr);
+			
+			//Store Data
+			byte[] rcvData = in.readData(reply.getLength());
+			byte[] pktByte = concateHdrData(hdr, rcvData);
+			reply.parseData(pktByte, 16, reply.length);
+			
+			
+			return sessionID == reply. getSID () && reply. getType () == PacketType. LOGOUT_RESPONSE;
+			
+		}catch (IOException e){
+			System.err.println(e.getMessage());
+		}
+		
+		return false;
 	}
 	
 
@@ -128,6 +170,14 @@ public class MessageClientHandler {
 	 */
 	public long getSessionID(){
 		return sessionID;
+	}
+	
+	private byte[] concateHdrData(byte[] h, byte[] d){
+		byte[] pktBytes = h;
+		for(int i = h.length, j = 0; i < h.length + d.length; i++, j++){
+			pktBytes[i] = d[j];
+		}
+		return pktBytes;
 	}
 	
 }

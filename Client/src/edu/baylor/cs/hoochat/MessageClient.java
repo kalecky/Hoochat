@@ -113,11 +113,11 @@ public class MessageClient {
 		    String pass = bf.readLine();
 
 		    /******Send login request*****/
-		    Random rand = new Random();
 		    login = clientHandler.LoginRequest(user, pass);
 		    
 		    //Check login success
 		    if(!login){
+		    	user = null;
 		    	System.out.println("Incorrect User or Password!");
 		    	System.out.println("Would you like to try again? (y/n)");
 		    	boolean flag = true;
@@ -159,16 +159,20 @@ public class MessageClient {
 		System.out.print("Enter Message:\n");
 		String msg = bf.readLine().trim();
 		
-		//TODO
-		//Send Message Packet to server
-		
+		if(!clientHandler.sendRequest(rcvr, msg)){
+			System.err.println("Error Sending Message");
+		}else{
+			System.out.println("Message Sent!\n");
+		}
 	}
 	
 	private static void logout(){
-		user = null;
-		
-		//TODO
-		//Send Logout Packet to Server
+		if(clientHandler.LogoutRequest()){
+			user = null;
+			
+		}else{
+			System.err.println("Error Logging User Out!");
+		}
 	}
 	
 	private static void operationPrompt(){

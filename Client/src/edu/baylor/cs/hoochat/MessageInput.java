@@ -12,6 +12,7 @@ package edu.baylor.cs.hoochat;
 import java.io.EOFException;  //If premature end of input
 import java.io.IOException;   //If an IO Error occurs while using input stream
 import java.io.InputStream;   //Input stream byte source
+import java.nio.charset.StandardCharsets;
 
 /**
  * Deserialization input source for messages
@@ -55,13 +56,31 @@ public class MessageInput{
 		return in.read(); //Read next byte from input stream
 	}
 	
+	public byte[] readHeader() throws IOException {
+		String hdr = "";
+		for(int i = 0; i < 16; i++){
+			hdr = hdr + readUTF8Byte();
+		}
+		
+		return hdr.getBytes(StandardCharsets.UTF_8);
+	}
+	
+	public byte[] readData(int length) throws IOException {
+		String data = "";
+		for(int i = 0; i < length; i++){
+			data += readUTF8Byte();
+		}
+		return data.getBytes(StandardCharsets.UTF_8);
+	}
+	
+	
 	/**
 	 * Builds a string from an input stream up until the next occurrence of 
 	 * a space character.
 	 * @return String representation of ASCII bytes
 	 * @throws EOFException if premature end of data
 	 */
-	public String readToNextSpace() throws EOFException{
+	public String readToNextSpaceASCII() throws EOFException{
 		String nextStr = ""; //To Store string to be returned
 		boolean breakLoop = false;     //Flag to break the loop
 		String current;             //Holds string representation of a byte
@@ -95,7 +114,7 @@ public class MessageInput{
 	 * @return String representation of ASCII bytes
 	 * @throws EOFException if premature end of data
 	 */
-	public String readLine() throws EOFException{
+	public String readASCIILine() throws EOFException{
 		String nextStr = ""; //Holds string to be returned
 		String current;                //Holds string representation of a byte
 		boolean breakLoop = false;
@@ -142,6 +161,25 @@ public class MessageInput{
 	}
 	
 	/**
+	 * Returns the UTF-8 string version of a byte from an input stream
+	 * @return String representation of ASCII bytes
+	 * @throws EOFException if premature end of string
+	 */
+	public String readUTF8Byte() throws EOFException{
+		byte[] bytes; //Bytes to be returned as ASCII
+		try{ 
+			bytes = new byte[]{(byte)in.read()}; //Read the next byte in stream
+			if(bytes[0] == -1){ //Check for premature end of input stream
+				throw new EOFException("Premature end of stream");
+			}
+			return new String(bytes, StandardCharsets.UTF_8); //Decode byte in ASCII
+		}
+		catch(IOException e){ //Premature end of input stream
+			throw new EOFException(e.getMessage());
+		}	
+	}
+	
+	/**
 	 * Constructs a string from a length given the length of the string and the
 	 * string itself, which are separated by a space in an byte input stream.
 	 * @return str string read
@@ -149,7 +187,7 @@ public class MessageInput{
 	 */
 	public String readString() throws Exception{
 		//Read length of string
-		int length = Integer.valueOf(readToNextSpace());
+		int length = Integer.valueOf(readToNextSpaceASCII());
 		
 		//Check that value is not negative
 		if(length < 0){
@@ -172,7 +210,7 @@ public class MessageInput{
 	 */
 	public int readInt() throws NumberFormatException, EOFException{
 		//Read the next int in the byte stream
-		int intVal = Integer.valueOf(readToNextSpace());
+		int intVal = Integer.valueOf(readToNextSpaceASCII());
 		return intVal;
 	}
 	
