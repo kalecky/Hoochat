@@ -39,7 +39,7 @@ public:
 	// Returns user id if credentials are valid, otherwise -1
 	int logIn (const string& username, const string& password) {
 		bool uid = -1;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("XXX (?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `getUser`('" + username + ",'" + password + "')");
 		statement-> setString (1, username);
 		statement-> setString (2, password);
 		sql::ResultSet* results = statement-> executeQuery ();
@@ -66,7 +66,7 @@ public:
 
 	string readMessage (int uid, int mid) {
 		string message;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("XXX (?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE `src_userID='" + uid + "', `msgID`='" + mid +"'");                 
 		statement-> setInt (1, uid);
 		statement-> setInt (2, mid);
 		sql::ResultSet* results = statement-> executeQuery ();
