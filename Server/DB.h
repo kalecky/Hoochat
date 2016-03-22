@@ -39,7 +39,7 @@ public:
 	// Returns user id if credentials are valid, otherwise -1
 	int logIn (const string& username, const string& password) {
 		bool uid = -1;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `getUser`('" + username + ",'" + password + "')");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `getUser`('?', '?')");
 		statement-> setString (1, username);
 		statement-> setString (2, password);
 		sql::ResultSet* results = statement-> executeQuery ();
@@ -53,7 +53,7 @@ public:
 
 	vector<int> listUnreadMessages (int uid) {
 		vector<int> mids;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("XXX (?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE read='0'");
 		statement-> setInt (1, uid);
 		sql::ResultSet* results = statement-> executeQuery ();
 		if (results-> next ()) {
@@ -66,7 +66,7 @@ public:
 
 	string readMessage (int uid, int mid) {
 		string message;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE `src_userID='" + uid + "', `msgID`='" + mid +"'");                 
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE `src_userID='?', `msgID`='?'");                 
 		statement-> setInt (1, uid);
 		statement-> setInt (2, mid);
 		sql::ResultSet* results = statement-> executeQuery ();
@@ -94,10 +94,11 @@ public:
 
 	bool sendMessage (int uid, string recipient, string message) {
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("XXX (?, ?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("INSERT INTO `dbo`.`Message` (`src_userID`, `groupID`, `sendTime`, `message`) VALUES ('?', '?', '?', '?')");
 		statement-> setInt (1, uid);
 		statement-> setString (2, recipient);
-		statement-> setString (3, message);
+		//statement-> setString (3, ???); //Need current time in format '2016-03-21 22:06:54' (Without Quotes)
+		statement-> setString (4, message);
 		result = statement-> execute ();
 		delete statement;
 		return result;
@@ -106,9 +107,9 @@ public:
 private:
 	bool markMessageAsRead (int uid, int mid) {
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("XXX (?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("UPDATE `dbo`.`Message` SET `read`='1' WHERE `msgID`='?'");
 		statement-> setInt (1, uid);
-		statement-> setInt (2, mid);
+		//statement-> setInt (2, mid); //Unneeded
 		result = statement-> executeUpdate ();
 		delete statement;
 		return result;
