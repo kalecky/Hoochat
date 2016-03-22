@@ -101,7 +101,7 @@ public:
 				return 0;
 			}
 		}
-		byte* message = new byte[message_length];
+		byte* message = new byte[length = message_length];
 		message [0] = (byte) (SID >> 0);
 		message [1] = (byte) (SID >> 8);
 		message [2] = (byte) (SID >> 16);
