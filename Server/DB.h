@@ -39,12 +39,12 @@ public:
 	// Returns user id if credentials are valid, otherwise -1
 	int logIn (const string& username, const string& password) {
 		bool uid = -1;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `getUser`('?', '?')");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `getUser`(?, ?)");
 		statement-> setString (1, username);
 		statement-> setString (2, password);
 		sql::ResultSet* results = statement-> executeQuery ();
 		if (results-> next ()) {
-			uid = results-> getInt ("ID");
+			uid = results-> getInt (1);
 		}
 		delete results;
 		delete statement;
@@ -53,11 +53,11 @@ public:
 
 	vector<int> listUnreadMessages (int uid) {
 		vector<int> mids;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE read='0'");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE read='0'");  ONLY IF THE MESSAGE WAS SENT TO USER WITH UID
 		statement-> setInt (1, uid);
 		sql::ResultSet* results = statement-> executeQuery ();
 		if (results-> next ()) {
-			mids. push_back (results-> getInt ("ID"));
+			mids. push_back (results-> getInt (1));
 		}
 		delete results;
 		delete statement;
@@ -66,12 +66,12 @@ public:
 
 	string readMessage (int uid, int mid) {
 		string message;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE `src_userID='?', `msgID`='?'");                 
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE `src_userID=?, `msgID`=?");  ONLY IF THE MESSAGE WAS SENT TO USER WITH UID or FROM USER WITH UID
 		statement-> setInt (1, uid);
 		statement-> setInt (2, mid);
 		sql::ResultSet* results = statement-> executeQuery ();
 		if (results-> next ()) {
-			message = results-> getString ("message");
+			message = results-> getString (1);
 			if (!markMessageAsRead (uid, mid)) {
 				message. clear ();
 			}
@@ -94,7 +94,7 @@ public:
 
 	bool sendMessage (int uid, string recipient, string message) {
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("INSERT INTO `dbo`.`Message` (`src_userID`, `groupID`, `sendTime`, `message`) VALUES ('?', '?', '?', '?')");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("INSERT INTO `dbo`.`Message` (`src_userID`, `groupID`, `sendTime`, `message`) VALUES (?, ?, ?, ?)");
 		statement-> setInt (1, uid);
 		statement-> setString (2, recipient);
 		//statement-> setString (3, ???); //Need current time in format '2016-03-21 22:06:54' (Without Quotes)
@@ -107,9 +107,9 @@ public:
 private:
 	bool markMessageAsRead (int uid, int mid) {
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("UPDATE `dbo`.`Message` SET `read`='1' WHERE `msgID`='?'");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("UPDATE `dbo`.`Message` SET `read`='1' WHERE `msgID`=?");  ONLY IF THE MESSAGE WAS SENT TO USER WITH UID
 		statement-> setInt (1, uid);
-		//statement-> setInt (2, mid); //Unneeded
+		statement-> setInt (2, mid); //Ununneeded
 		result = statement-> executeUpdate ();
 		delete statement;
 		return result;
