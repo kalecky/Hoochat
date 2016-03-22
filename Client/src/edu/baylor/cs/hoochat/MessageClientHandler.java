@@ -31,125 +31,68 @@ public class MessageClientHandler {
 	}
 	
 	public boolean LoginRequest(String user, String pass){
-		Packet packet = new Packet (sessionID, PacketType. LOGIN_REQUEST);
-		packet.getData().add(user);
-		packet.getData().add(pass);
-		byte[] data = packet.serialize();
-		
-		
 		try { 
-			// send byte[] data
-			out.write(data);
-		
-			//Handle Reply
-			//Store header
-			byte[] hdr  = in.readHeader();
-			Packet reply = Packet. initialize (hdr);
-			
-			//Store Data
-			byte[] rcvData = in.readData(reply.getLength());
-			byte[] pktByte = concateHdrData(hdr, rcvData);
-			reply.parseData(pktByte, 16, reply.length);
-			
-			
-			return (sessionID = reply.getSID()) != -1;
-			
-		}catch (IOException e){
-			System.err.println(e.getMessage());
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. LOGIN_REQUEST, new String [] { user, pass }));
+			return (sessionID = reply. getSID ()) != -1 && reply. getType () == PacketType. LOGIN_RESPONSE;			
+		} catch (IOException ex) {
+			System. err. println (ex. getMessage ());
+			return false;
 		}
-		
-		return false; //Not reached unless error occurs
 	}
 	
-	public boolean sendRequest(String recipient, String message){
-		Packet packet = new Packet (sessionID, PacketType. SEND_REQUEST);
-		packet.getData().add(recipient);
-		packet.getData().add(message);
-		byte[] data = packet.serialize();
-
-		// send data
-		try {
-			out.write(data); //Send the packet to the server
-			
-			//Handle the reply
-			//Store header
-			byte[] hdr  = in.readHeader();
-			Packet reply = Packet. initialize (hdr);
-			
-			//Store Data
-			byte[] rcvData = in.readData(reply.getLength());
-			byte[] pktByte = concateHdrData(hdr, rcvData);
-			reply.parseData(pktByte, 16, reply.length);
-			
-			return sessionID == reply. getSID () && reply. getType () == PacketType. LOGIN_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";
-		} catch (IOException e) {
-			System.err.println(e.getMessage());
+	public boolean sendRequest (String recipient, String message) {
+		try { 
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. SEND_REQUEST, new String [] { recipient, message }));
+			return sessionID == reply. getSID () && reply. getType () == PacketType. SEND_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";			
+		} catch (IOException ex) {
+			System. err. println (ex. getMessage ());
+			return false;
 		}
-		
+	}
+	
+	public String PullRequest (Integer mid) {
+		try { 
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. PULL_REQUEST, new String [] { mid. toString () }));
+			if (sessionID == reply. getSID () && reply. getType () == PacketType. PULL_RESPONSE && reply. getData (). size () == 2) {
+				String sender = reply. getData (). get (0);
+				String message = reply. getData (). get (1);
+				return sender + ": " + message;
+			}			
+		} catch (IOException ex) {
+			System. err. println (ex. getMessage ());
+		}
+		return null;
+	}
+	
+	public boolean RemoveRequest (Integer mid) {
+		try { 
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. REMOVE_REQUEST, new String [] { mid. toString () }));
+			return sessionID == reply. getSID () && reply. getType () == PacketType. REMOVE_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";			
+		} catch (IOException ex) {
+			System. err. println (ex. getMessage ());
+			return false;
+		}
+	}
+	
+	public boolean LogoutRequest () {
+		try { 
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. LOGOUT_REQUEST));
+			if (sessionID == reply. getSID () && reply. getType () == PacketType. LOGOUT_RESPONSE) {
+				sessionID = -1;
+				return true;
+			}
+		} catch (IOException ex) {
+			System. err. println (ex. getMessage ());
+		}
 		return false;
 	}
 	
-	public void PullRequest(Integer mid){
-		Packet packet = new Packet (sessionID, PacketType. PULL_REQUEST);
-		packet.getData().add(mid.toString());
-		byte[] data = packet.serialize();
-
-		// send data
-
-		// receive byte[] read
-		
-		byte[] read = null;
-		Packet reply = Packet. initialize (read);
-		reply. parseData (data, 16, read. length - 16);
-		if (sessionID == reply. getSID () && reply. getType () == PacketType. PULL_RESPONSE && reply. getData (). size () == 2) {
-			String sender = reply. getData (). get (0);
-			String message = reply. getData (). get (1);
-			// RETURN
-		}
-	}
-	
-	public boolean RemoveRequest(Integer mid){
-		Packet packet = new Packet (sessionID, PacketType. REMOVE_REQUEST);
-		packet.getData().add(mid.toString());
-		byte[] data = packet.serialize();
-
-		// send data
-
-		// receive byte[] read
-		
-		byte[] read = null;
-		Packet reply = Packet. initialize (read);
-		reply. parseData (data, 16, read. length - 16);
-		return sessionID == reply. getSID () && reply. getType () == PacketType. REMOVE_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";
-	}
-	
-	public boolean LogoutRequest(){
-		Packet packet = new Packet (sessionID, PacketType. LOGOUT_REQUEST);
-		byte[] data = packet.serialize();
-
-		try { 
-			// send byte[] data
-			out.write(data);
-		
-			//Handle Reply
-			
-			//Store header
-			byte[] hdr  = in.readHeader();
-			Packet reply = Packet. initialize (hdr);
-			
-			//Store Data
-			byte[] rcvData = in.readData(reply.getLength());
-			byte[] pktByte = concateHdrData(hdr, rcvData);
-			reply.parseData(pktByte, 16, reply.length);
-			
-			
-			return sessionID == reply. getSID () && reply. getType () == PacketType. LOGOUT_RESPONSE;
-			
-		}catch (IOException e){
-			System.err.println(e.getMessage());
-		}
-		
-		return false;
+	Packet SendAndReceive (Packet packet) throws IOException {
+		byte [] data = packet. serialize ();
+		out. write (data);
+		Packet reply = Packet. initialize (in. readHeader ());
+		reply. parseData (in. readData (reply. getLength ()));
+		return reply;
 	}
 	
 
@@ -170,14 +113,6 @@ public class MessageClientHandler {
 	 */
 	public long getSessionID(){
 		return sessionID;
-	}
-	
-	private byte[] concateHdrData(byte[] h, byte[] d){
-		byte[] pktBytes = h;
-		for(int i = h.length, j = 0; i < h.length + d.length; i++, j++){
-			pktBytes[i] = d[j];
-		}
-		return pktBytes;
 	}
 	
 }

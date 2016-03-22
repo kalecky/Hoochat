@@ -2,6 +2,7 @@ package edu.baylor.cs.hoochat;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Packet {
@@ -15,9 +16,12 @@ public class Packet {
 		setSID (SID);
 		setType (type);
 	}
+	public Packet (long SID, int type, String [] data) {
+		this (SID, type);
+		this. data = Arrays. asList (data);
+	}
 	private Packet (long SID, int type, int length) {
-		setSID (SID);
-		setType (type);
+		this (SID, type);
 		setLength (length);
 	}
 
@@ -52,6 +56,9 @@ public class Packet {
 	}
 	
 	// Reads and decodes packet data
+	public boolean parseData (byte [] data) {
+		return parseData (data, 0, data. length);
+	}
 	public boolean parseData(byte[] data, int offset, int length) {
 		this. data = new ArrayList<> ();
 		byte [] bytes = new byte [length];
@@ -79,7 +86,7 @@ public class Packet {
 			}
 		}
 		return true;
-	}
+	}	
 	
 	// Gets byte representation of the packet
 	public byte[] serialize () { 
