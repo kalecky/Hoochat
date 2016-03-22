@@ -8,6 +8,7 @@
 #include <cppconn/exception.h>
 #include <cppconn/resultset.h>
 #include <cppconn/prepared_statement.h>
+#include <ctime>
 
 using namespace std;
 
@@ -39,7 +40,7 @@ public:
 	// Returns user id if credentials are valid, otherwise -1
 	int logIn (const string& username, const string& password) {
 		bool uid = -1;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `getUser`(?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL `logIn`(?, ?, @uid); SELECT @uid;");
 		statement-> setString (1, username);
 		statement-> setString (2, password);
 		sql::ResultSet* results = statement-> executeQuery ();
@@ -53,7 +54,7 @@ public:
 
 	vector<int> listUnreadMessages (int uid) {
 		vector<int> mids;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE read='0'");  ONLY IF THE MESSAGE WAS SENT TO USER WITH UID
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT msgID FROM `Message` join Recipients on Recipients.messageID = `Message`.msgID WHERE seen=0 and recipientID=?");
 		statement-> setInt (1, uid);
 		sql::ResultSet* results = statement-> executeQuery ();
 		if (results-> next ()) {
@@ -66,7 +67,7 @@ public:
 
 	string readMessage (int uid, int mid) {
 		string message;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT * FROM `Message` WHERE `src_userID=?, `msgID`=?");  ONLY IF THE MESSAGE WAS SENT TO USER WITH UID or FROM USER WITH UID
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT message FROM `Message` join Recipients on Recipients.messageID = `Message`.msgID WHERE recipientID=?, `msgID`=?");
 		statement-> setInt (1, uid);
 		statement-> setInt (2, mid);
 		sql::ResultSet* results = statement-> executeQuery ();
@@ -84,7 +85,7 @@ public:
 	// Hides the message from recipient, doesn't remove it completely so that sender can still see it
 	bool removeMessage (int uid, int mid) {
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("XXX (?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("UPDATE Recipients SET deleted = 1 where recipientID=? and msgID=?");
 		statement-> setInt (1, uid);
 		statement-> setInt (2, mid);
 		result = statement-> executeUpdate ();
@@ -93,12 +94,20 @@ public:
 	}
 
 	bool sendMessage (int uid, string recipient, string message) {
+		/*int recipient_id = findUser (recipient);
+		if (recipient_id == -1) {
+			return false;
+		}*/
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("INSERT INTO `dbo`.`Message` (`src_userID`, `groupID`, `sendTime`, `message`) VALUES (?, ?, ?, ?)");
+		sql::PreparedStatement* statement = connection-> prepareStatement ("CALL sendMessage (?, ?, ?, ?)");
 		statement-> setInt (1, uid);
 		statement-> setString (2, recipient);
-		//statement-> setString (3, ???); //Need current time in format '2016-03-21 22:06:54' (Without Quotes)
-		statement-> setString (4, message);
+		statement-> setString (3, message);
+		char buffer [256];
+		time_t now = time (NULL);
+		tm* tmnow = localtime (&now);
+		strftime (buffer, 256, "%F %T", tmnow);
+		statement-> setString (4, buffer);
 		result = statement-> execute ();
 		delete statement;
 		return result;
@@ -107,13 +116,25 @@ public:
 private:
 	bool markMessageAsRead (int uid, int mid) {
 		bool result;
-		sql::PreparedStatement* statement = connection-> prepareStatement ("UPDATE `dbo`.`Message` SET `read`='1' WHERE `msgID`=?");  ONLY IF THE MESSAGE WAS SENT TO USER WITH UID
+		sql::PreparedStatement* statement = connection-> prepareStatement ("UPDATE Recipients SET seen = 1 where recipientID=? and msgID=?");
 		statement-> setInt (1, uid);
 		statement-> setInt (2, mid); //Ununneeded
 		result = statement-> executeUpdate ();
 		delete statement;
 		return result;
 	}
+
+	/*int findUser (string username) {
+		sql::PreparedStatement* statement = connection-> prepareStatement ("SELECT userId from Users where email=?");
+		statement-> setString (1, username);
+		sql::ResultSet* results = statement-> executeQuery ();
+		if (results-> next ()) {
+			return results-> getInt (1);
+		}
+		delete results;
+		delete statement;
+		return -1;
+	}*/
 
 };
 

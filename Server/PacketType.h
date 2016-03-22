@@ -2,8 +2,7 @@
 #define __PacketType_h
 
 
-static class PacketType {
-public:
+namespace PacketType {
 
 	static const int
 		LOGIN_REQUEST = 1,
@@ -16,7 +15,8 @@ public:
 		PULL_RESPONSE = 8,
 		REMOVE_REQUEST = 9,
 		REMOVE_RESPONSE = 10,
-		NEWMESSAGE_PUSH = 11
+		NEWMESSAGES_REQUEST = 11,
+		NEWMESSAGES_RESPONSE = 12
 	;
 	
 };

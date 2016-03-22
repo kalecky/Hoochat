@@ -2,6 +2,7 @@ package edu.baylor.cs.hoochat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -50,9 +51,9 @@ public class MessageClientHandler {
 		}
 	}
 	
-	public String PullRequest (Integer mid) {
+	public String PullRequest (String mid) {
 		try { 
-			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. PULL_REQUEST, new String [] { mid. toString () }));
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. PULL_REQUEST, new String [] { mid }));
 			if (sessionID == reply. getSID () && reply. getType () == PacketType. PULL_RESPONSE && reply. getData (). size () == 2) {
 				String sender = reply. getData (). get (0);
 				String message = reply. getData (). get (1);
@@ -64,9 +65,9 @@ public class MessageClientHandler {
 		return null;
 	}
 	
-	public boolean RemoveRequest (Integer mid) {
+	public boolean RemoveRequest (String mid) {
 		try { 
-			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. REMOVE_REQUEST, new String [] { mid. toString () }));
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. REMOVE_REQUEST, new String [] { mid }));
 			return sessionID == reply. getSID () && reply. getType () == PacketType. REMOVE_RESPONSE && reply. getData (). size () == 1 && reply. getData (). get (0) == "1";			
 		} catch (IOException ex) {
 			System. err. println (ex. getMessage ());
@@ -85,6 +86,18 @@ public class MessageClientHandler {
 			System. err. println (ex. getMessage ());
 		}
 		return false;
+	}
+	
+	public List<String> NewMessagesRequest () {
+		try { 
+			Packet reply = SendAndReceive (new Packet (sessionID, PacketType. NEWMESSAGES_REQUEST));
+			if (sessionID == reply. getSID () && reply. getType () == PacketType. NEWMESSAGES_RESPONSE) {
+				return reply.getData();
+			}
+		} catch (IOException ex) {
+			System. err. println (ex. getMessage ());
+		}
+		return null;
 	}
 	
 	Packet SendAndReceive (Packet packet) throws IOException {

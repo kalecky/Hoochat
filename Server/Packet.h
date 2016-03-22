@@ -24,7 +24,7 @@ class Packet {
 
 public:
 	Packet (__int64_t SID, int type) : Packet (SID, type, 0) { }
-	Packet (byte* header) : Packet (header [0] | (header [1] << 8) | (header [2] << 16) | (header [3] << 24) | (header [4] << 32) | (header [5] << 40) | (header [6] << 48) | (header [7] << 56), (header [8] | (header [9] << 8) | (header [10] << 16) | (header [11] << 24)), header [12] | (header [13] << 8) | (header [14] << 16) | (header [15] << 24)) { }
+	Packet (byte* header) : Packet (header [0] | (((__int64_t) header [1]) << 8) | (((__int64_t) header [2]) << 16) | (((__int64_t) header [3]) << 24) | (((__int64_t) header [4]) << 32) | (((__int64_t) header [5]) << 40) | (((__int64_t) header [6]) << 48) | (((__int64_t) header [7]) << 56), (((__int64_t) header [8]) | (((__int64_t) header [9]) << 8) | (((__int64_t) header [10]) << 16) | (((__int64_t) header [11]) << 24)), header [12] | (((__int64_t) header [13]) << 8) | (((__int64_t) header [14]) << 16) | (((__int64_t) header [15]) << 24)) { }
 
 	__int64_t getSID() {
 		return SID;
@@ -65,14 +65,14 @@ public:
 		for (int i = offset; i != offset + length; ++i) {
 			if (data [i] >= 65 && data [i] <= 80) {
 				if (first = !first) {
-					bytes [bytes_pos++] = (byte) ((last - 65) | ((data [i] - 65) << 4));
+					bytes [bytes_pos++] = (byte) ((last - 65) | (((int) data [i] - 65) << 4));
 				} else {					
 					last = data [i];
 				}
 			} else if (data [i] == 88) {
 				if (bytes_pos != 0) {
 					try {
-						this-> data. push_back (string (bytes, 0, bytes_pos));
+						this-> data. push_back (string ((char*) bytes, bytes_pos));
 						bytes_pos = 0;
 					} catch (exception* ex) {
 						delete [] bytes;
@@ -90,12 +90,12 @@ public:
 	
 	// Gets byte representation of the packet
 	byte* serialize () {
-		byte** bytes = new byte [data. size ()][];
+		const byte** bytes = new const byte* [data. size ()];
 		int message_length = 16;
 		int i = 0;
 		for (auto it = data. begin (); it != data. end (); ++it) {
 			try {
-				bytes [i++] = it-> c_str ();
+				bytes [i++] = (const byte*) it-> c_str ();
 				message_length += it-> length () * 2 + 1;
 			} catch (exception* ex) {
 				return 0;

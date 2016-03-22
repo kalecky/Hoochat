@@ -7,6 +7,7 @@ package edu.baylor.cs.hoochat;
 
 
 import java.io.*; 					//For Stream Reading/Writing
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -43,7 +44,13 @@ public class MessageClient {
 								case "2": //Send message
 									sendMessage();
 									break;
-								case "3": //Logout
+								case "3": //Send message
+									readMessage();
+									break;
+								case "4": //Send message
+									removeMessage();
+									break;
+								case "5": //Logout
 									session = false;
 									logout();
 									break;
@@ -145,8 +152,16 @@ public class MessageClient {
 	}
 	
 	private static void checkMessages(){
-		//TODO
-		//Make pull request to server
+		System.out.println();
+		System.out.println("Checking Messages: ");
+		List<String> mids = clientHandler.NewMessagesRequest();
+		if(mids == null){
+			System.err.println("Error Checking Messages");
+		}else{
+			for (String mid : mids) {
+				System.out.println(mid);
+			}
+		} 
 	}
 	
 	private static void sendMessage() throws IOException{
@@ -163,6 +178,35 @@ public class MessageClient {
 			System.err.println("Error Sending Message");
 		}else{
 			System.out.println("Message Sent!\n");
+		}
+	}
+	
+	private static void readMessage() throws IOException{
+		System.out.println();
+		System.out.println("Read Message: ");
+		
+		System.out.print("Enter Message ID: ");
+		String mid = bf.readLine().trim();
+		
+		String message = clientHandler.PullRequest(mid);
+		if(message == null){
+			System.err.println("Error Reading Message");
+		}else{
+			System.out.println(message);
+		}
+	}
+	
+	private static void removeMessage() throws IOException{
+		System.out.println();
+		System.out.println("Remove Message: ");
+		
+		System.out.print("Enter Message ID: ");
+		String mid = bf.readLine().trim();
+		
+		if(clientHandler.RemoveRequest(mid)){
+			System.err.println("Error Removing Message");
+		}else{
+			System.out.println("Message removed!");
 		}
 	}
 	

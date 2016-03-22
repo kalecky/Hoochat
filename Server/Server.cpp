@@ -10,10 +10,9 @@
 #include <openssl/err.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <malloc/malloc.h>
 #include <string.h>
-#include <Packet.h>
-#include <PacketType.h>
+#include "Packet.h"
+#include "PacketType.h"
 #include <map>
 #include "DB.h"
 #include <random>
@@ -70,7 +69,7 @@ int OpenListener(int port)
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
-    if ( bind(sd, &addr, sizeof(addr)) != 0 )
+    if ( bind(sd, (const sockaddr*) &addr, sizeof(addr)) != 0 )
     {
         perror("can't bind port");
         abort();
@@ -87,12 +86,13 @@ int OpenListener(int port)
 /*--- InitServerCTX - initialize SSL server  and create context     ---*/
 /*---------------------------------------------------------------------*/
 SSL_CTX* InitServerCTX(void)
-{   SSL_METHOD *method;
+{
     SSL_CTX *ctx;
 
-    OpenSSL_add_all_algorithms();		/* load & register all cryptos, etc. */
+    //OpenSSL_add_all_algorithms();		/* load & register all cryptos, etc. */
     SSL_load_error_strings();			/* load all error messages */
-    method = SSLv3_server_method();		/* create new server-method instance */
+	SSL_library_init ();
+	const SSL_METHOD* method = TLSv1_server_method();		/* create new server-method instance */
     ctx = SSL_CTX_new(method);			/* create new context from method */
     if ( ctx == NULL )
     {
@@ -127,10 +127,10 @@ void LoadCertificates(SSL_CTX* ctx, const char* CertFile)
     }
 }
 
-byte* readData (byte* buffer, int length) {
+byte* readData (SSL* ssl, byte* buffer, int length) {
 	int read_total = 0, read_now = 0;
 	while (read_total != length) {
-		if ((read_now = SSL_read(buffer, read_total, length - read_total)) > 0) {
+		if ((read_now = SSL_read(ssl, buffer + read_total, length - read_total)) > 0) {
 			read_total += read_now;
 		} else {
 			ERR_print_errors_fp(stderr);
@@ -140,8 +140,8 @@ byte* readData (byte* buffer, int length) {
 	return buffer;
 }
 
-byte* readHeader (byte* buffer) {
-	return readData (buffer, 16);
+byte* readHeader (SSL* ssl, byte* buffer) {
+	return readData (ssl, buffer, 16);
 }
 
 bool HandlePacket (Packet& request, Packet& response) {
@@ -158,12 +158,12 @@ bool HandlePacket (Packet& request, Packet& response) {
 		}
 		return true;
 	}
-	auto* it = sids.find(request.getSID());
+	auto it = sids.find(request.getSID());
 	if (it == sids.end ()) {
 		response.setType(request.getType() + 1);
 		return true;
 	}
-	uid = *it;
+	uid = it-> second;
 	switch (request.getType()) {
 	case PacketType::LOGOUT_REQUEST:
 		response.setType(PacketType::LOGOUT_RESPONSE);
@@ -198,13 +198,18 @@ bool HandlePacket (Packet& request, Packet& response) {
 	case PacketType::SEND_REQUEST:
 		response.setType(PacketType::SEND_RESPONSE);
 		response.setSID(request.getSID());
-		if (request.getData().size() == 2) {
-			if (db.sendMessage(uid, request.getData()[1], request.getData()[2])) {
-				response.getData().push_back("1");
-				return true;
-			}
+		if (request.getData().size() == 2 && db.sendMessage(uid, request.getData()[1], request.getData()[2])) {
+			response.getData().push_back("1");
+			return true;
 		}
 		response.getData().push_back("0");
+		return true;
+	case PacketType::NEWMESSAGES_REQUEST:
+		response.setType(PacketType::NEWMESSAGES_RESPONSE);
+		response.setSID(request.getSID());
+		for (int id : db.listUnreadMessages(uid)) {
+			response.getData().push_back(to_string(id));
+		}
 		return true;
 	default:
 		return false;
@@ -223,16 +228,16 @@ void Servlet(SSL* ssl)	/* Serve the connection -- threadable */
         ERR_print_errors_fp(stderr);
     else
     {							/* get any certificates */
-    	Packet request (readHeader (header));
+    	Packet request (readHeader (ssl, header));
     	if (request.getLength () <= INCOMING_STATIC_BUFFER) {
-        	request. parseData (readData (data, request. getLength ()), 0, request. getLength ());
+        	request. parseData (readData (ssl, data, request. getLength ()), 0, request. getLength ());
     	} else {
     		byte* buffer = new byte [request. getLength ()];
-    		request. parseData (readData (data, request. getLength ()), 0, request. getLength ());
+    		request. parseData (readData (ssl, data, request. getLength ()), 0, request. getLength ());
     		delete [] buffer;
     	}
 
-    	Packet response;
+    	Packet response (0, 0);
     	if (HandlePacket (request, response)) {
     		byte* response_data = response. serialize ();
     		SSL_write (ssl, response_data, response. getLength ());
@@ -264,9 +269,7 @@ int main(int count, char *strings[])
         int len = sizeof(addr);
         SSL *ssl;
 
-        int client = accept(server, &addr, &len);		/* accept connection as usual */
-        printf("Connection: %s:%d\n",
-        	inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+        int client = accept(server, (struct sockaddr*) &addr, (unsigned int*) &len);		/* accept connection as usual */
         ssl = SSL_new(ctx);         					/* get new SSL state with context */
         SSL_set_fd(ssl, client);						/* set connection socket to SSL state */
         Servlet(ssl);									/* service connection */
