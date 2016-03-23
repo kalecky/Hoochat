@@ -184,7 +184,7 @@ DELIMITER ;;
 CREATE DEFINER=`root`@`localhost` PROCEDURE `addUser`(IN fname VARCHAR(20), IN lname VARCHAR(20), IN email VARCHAR(45),
 IN pw VARCHAR(45), IN salt VARCHAR(45), IN phone VARCHAR(12), IN pic VARCHAR(45))
 BEGIN
-INSERT INTO `dbo`.`Users`(`fname`, `lname`, `email`, `pw`, `salt`, `phone`, `profilePic`)
+INSERT INTO `dbo`.`Users`(`fname`, `lname`, `email`, `pw`, `phone`, `profilePic`)
     VALUES(fname, lname, email, pw, salt, phone, pic);
     CALL updateUserPassword(email, pw);
 END ;;
