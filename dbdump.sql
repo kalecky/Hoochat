@@ -269,7 +269,7 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `logIn`(IN email VARCHAR(45), IN pass VARCHAR(45), OUT uid INT(11))
+CREATE DEFINER=`root`@`localhost` PROCEDURE `logIn`(IN email VARCHAR(45), IN pass VARCHAR(45))
 BEGIN
     SELECT `userID` into uid FROM `dbo`.`Users` WHERE email = `email` and pw = SHA2(CONCAT(pass, `salt`), 256);
 END ;;
