@@ -50,12 +50,16 @@ public class MessageInput{
 	
 	public byte[] readData (int length) throws IOException {
 		byte [] data = new byte [length];
-		int read_total = 0, read_now = 0;
+		int read_total = 0, read_now = 0, attempts = 0;
 		while (read_total != length) {
 			if ((read_now = in. read (data, read_total, length - read_total)) > 0) {
 				read_total += read_now;
+			} else if (++attempts == 5){
+				throw new IOException ("Cannot read so many bytes (" + read_total + "/" + length + ") from input stream.");
 			} else {
-				throw new IOException ("Cannot read so many bytes from input stream.");
+				try {
+					Thread.sleep(500 * attempts);
+				} catch (InterruptedException e) { }
 			}
 		}
 		return data;

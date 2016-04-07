@@ -24,7 +24,7 @@ class Packet {
 
 public:
 	Packet (__int64_t SID, int type) : Packet (SID, type, 0) { }
-	Packet (byte* header) : Packet (header [0] | (((__int64_t) header [1]) << 8) | (((__int64_t) header [2]) << 16) | (((__int64_t) header [3]) << 24) | (((__int64_t) header [4]) << 32) | (((__int64_t) header [5]) << 40) | (((__int64_t) header [6]) << 48) | (((__int64_t) header [7]) << 56), (((__int64_t) header [8]) | (((__int64_t) header [9]) << 8) | (((__int64_t) header [10]) << 16) | (((__int64_t) header [11]) << 24)), header [12] | (((__int64_t) header [13]) << 8) | (((__int64_t) header [14]) << 16) | (((__int64_t) header [15]) << 24)) { }
+	Packet (byte* header) : Packet (header [0] | (((__int64_t) 0 | header [1]) << 8) | (((__int64_t) 0 | header [2]) << 16) | (((__int64_t) 0 | header [3]) << 24) | (((__int64_t) 0 | header [4]) << 32) | (((__int64_t) 0 | header [5]) << 40) | (((__int64_t) 0 | header [6]) << 48) | (((__int64_t) 0 | header [7]) << 56), (((__int64_t) 0 | header [8]) | (((__int64_t) 0 | header [9]) << 8) | (((__int64_t) 0 | header [10]) << 16) | (((__int64_t) 0 | header [11]) << 24)), 0 | header [12] | (((__int64_t) 0 | header [13]) << 8) | (((__int64_t) 0 | header [14]) << 16) | (((__int64_t) 0 | header [15]) << 24)) { }
 
 	__int64_t getSID() {
 		return SID;
@@ -48,7 +48,7 @@ private:
 	}
 
 public:
-	vector<string> getData() {
+	vector<string>& getData() {
 		return data;
 	}
 	void setData(vector<string> data) {
@@ -74,7 +74,7 @@ public:
 					try {
 						this-> data. push_back (string ((char*) bytes, bytes_pos));
 						bytes_pos = 0;
-					} catch (exception* ex) {
+					} catch (exception& ex) {
 						delete [] bytes;
 						return false;
 					}
@@ -97,7 +97,7 @@ public:
 			try {
 				bytes [i++] = (const byte*) it-> c_str ();
 				message_length += it-> length () * 2 + 1;
-			} catch (exception* ex) {
+			} catch (exception& ex) {
 				return 0;
 			}
 		}
@@ -120,7 +120,7 @@ public:
 		message [15] = (byte) ((message_length - 16) >> 24);
 		int message_pos = 16;
 		for (auto* byteline = bytes; byteline != bytes + data. size (); ++byteline) {
-			for (auto* b = *byteline; b; ++b) {
+			for (auto* b = *byteline; *b; ++b) {
 				message[message_pos++] = (byte) (((*b) & 0xf) + 65);
 				message[message_pos++] = (byte) ((((*b) >> 4) & 0xf) + 65);
 			}

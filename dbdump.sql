@@ -86,9 +86,9 @@ CREATE TABLE `Message` (
   `src_userID` int(11) NOT NULL COMMENT 'User ID of user that sent the message',
   `groupID` int(11) DEFAULT NULL,
   `sendTime` datetime NOT NULL COMMENT 'Time message was sent from user. (Independent from time that message was inserted into the database)',
-  `message` varchar(45) NOT NULL COMMENT 'Message content',
+  `message` varchar(5000) NOT NULL COMMENT 'Message content',
   `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Time that tuple was inserted into the table',
-  `read` tinyint(1) NOT NULL DEFAULT '0',
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`msgID`),
   UNIQUE KEY `msgID_UNIQUE` (`msgID`),
   KEY `FK__src_userID_idx` (`src_userID`),
@@ -115,9 +115,9 @@ DROP TABLE IF EXISTS `Recipients`;
 CREATE TABLE `Recipients` (
   `recipientID` int(11) NOT NULL,
   `messageID` int(11) NOT NULL,
-  `seen` tinyint(1) DEFAULT '0',
-  `deleted` tinyint(1) DEFAULT '0',
-  PRIMARY KEY (`recipientID`,`messageID`),
+  `seen` tinyint(1) NOT NULL DEFAULT '0',
+  `deleted` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`recipientID`,`messageID`),  
   KEY `FK__Message_Recipients_messageID` (`messageID`),
   CONSTRAINT `FK__Message_Recipients_messageID` FOREIGN KEY (`messageID`) REFERENCES `Message` (`msgID`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `FK__Users_Recipients_recipientID` FOREIGN KEY (`recipientID`) REFERENCES `Users` (`userID`) ON DELETE CASCADE ON UPDATE NO ACTION
@@ -142,13 +142,13 @@ DROP TABLE IF EXISTS `Users`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `Users` (
   `userID` int(11) NOT NULL AUTO_INCREMENT,
-  `fname` varchar(20) NOT NULL,
-  `lname` varchar(20) NOT NULL,
-  `email` varchar(45) NOT NULL,
-  `pw` varchar(45) NOT NULL,
-  `phone` varchar(12) NOT NULL,
-  `profilePic` varchar(45) NOT NULL,
-  `salt` varchar(45) NOT NULL,
+  `fname` varchar(40) NOT NULL,
+  `lname` varchar(40) NOT NULL,
+  `email` varchar(50) NOT NULL,
+  `pw` varchar(64) NOT NULL,
+  `phone` varchar(15) NOT NULL,
+  `profilePic` varchar(128) NOT NULL,
+  `salt` varchar(64) NOT NULL,
   `verified` tinyint(1) NOT NULL DEFAULT '0',
   `created` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `modified` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -164,7 +164,6 @@ CREATE TABLE `Users` (
 
 LOCK TABLES `Users` WRITE;
 /*!40000 ALTER TABLE `Users` DISABLE KEYS */;
-INSERT INTO `Users` VALUES (11,'aaron','salinas','aaron_salinas@baylor.edu','password','12344325124','aaron.jpg','salt',0,'2016-02-22 00:56:35','2016-02-22 00:56:35');
 /*!40000 ALTER TABLE `Users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -185,7 +184,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `addUser`(IN fname VARCHAR(20), IN l
 IN pw VARCHAR(45), IN phone VARCHAR(12), IN pic VARCHAR(45))
 BEGIN
 INSERT INTO `dbo`.`Users`(`fname`, `lname`, `email`, `pw`, `phone`, `profilePic`)
-    VALUES(fname, lname, email, pw, salt, phone, pic);
+    VALUES(fname, lname, email, pw, phone, pic);
     CALL updateUserPassword(email, pw);
 END ;;
 DELIMITER ;
@@ -224,11 +223,11 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `deleteUser`(IN email VARCHAR(45))
+CREATE DEFINER=`root`@`localhost` PROCEDURE `deleteUser`(IN emailq VARCHAR(45))
 BEGIN
 SET @usr = (SELECT `userID`
 FROM `dbo`.`Users` usr2
-WHERE email = usr2.`email`);
+WHERE emailq = usr2.`email`);
               
 DELETE FROM `dbo`.`Users`
     WHERE `userID` = @usr;
@@ -248,11 +247,11 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `getUser`(IN email VARCHAR(45))
+CREATE DEFINER=`root`@`localhost` PROCEDURE `getUser`(IN emailq VARCHAR(45))
 BEGIN
 SELECT `fname`, `lname`, `email`, `phone`
     FROM `dbo`.`Users`
-    Where `email` = email;
+    Where `email` = emailq;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -269,9 +268,9 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `logIn`(IN email VARCHAR(45), IN pass VARCHAR(45))
+CREATE DEFINER=`root`@`localhost` PROCEDURE `logIn`(IN emailq VARCHAR(45), IN pass VARCHAR(45))
 BEGIN
-    SELECT `userID` into uid FROM `dbo`.`Users` WHERE email = `email` and pw = SHA2(CONCAT(pass, `salt`), 256);
+    SELECT `userID` FROM `dbo`.`Users` WHERE email = emailq and pw like SHA2(CONCAT(pass, `salt`), 256) limit 1;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -291,9 +290,12 @@ DELIMITER ;;
 CREATE DEFINER=`root`@`localhost` PROCEDURE `sendMessage`(IN sender INT(11), IN recipient VARCHAR(45), IN message VARCHAR(45), IN send_time VARCHAR(45))
 BEGIN
         SET @recipientID = (SELECT `userId` from `Users` where `email` like recipient);
-        INSERT INTO `dbo`.`Message` (`src_userID`, `groupID`, `sendTime`, `message`) VALUES (sender, NULL, sendTime, message);
-        SET @mid = (SELECT msgID from Message where src_userID = sender order by sendTime desc limit 1);
-        INSERT INTO Recipients (recipientID, messageID) VALUES (@recipientID, @mid);
+        IF @recipientID IS NOT NULL THEN BEGIN
+            INSERT INTO `dbo`.`Message` (`src_userID`, `groupID`, `sendTime`, `message`) VALUES (sender, NULL, sendTime, message);
+            SET @mid = (SELECT msgID from Message where src_userID = sender order by created desc limit 1);        
+            INSERT INTO Recipients (recipientID, messageID) VALUES (@recipientID, @mid);
+            SELECT @mid;
+        END; END IF;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -310,14 +312,12 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `updateUserPassword`(IN email VARCHAR(45), IN pw VARCHAR(45))
+CREATE DEFINER=`root`@`localhost` PROCEDURE `updateUserPassword`(IN emailq VARCHAR(45), IN pw VARCHAR(45))
 BEGIN
-    SET @uID = (SELECT `userID` FROM `dbo`.`Users` WHERE `email` = email);
+    SET @uID = (SELECT `userID` FROM `dbo`.`Users` WHERE `email` = emailq limit 1);
     set @salt = uuid();
     set @hash = SHA2(CONCAT(pw, @salt), 256);
-    UPDATE `dbo`.`Users`
-    set `pw` = @hash, `salt` = @salt
-    WHERE  `userID` = @uID;
+    UPDATE `dbo`.`Users` set `pw` = @hash, `salt` = @salt WHERE `userID` = @uID;
 END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -357,3 +357,5 @@ DELIMITER ;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2016-03-22  8:48:44
+call `addUser`('a1', 'b', 'c', 'd', '0', 'pic');
+call `addUser`('a2', 'b', 'a', 'b', '0', 'pic');

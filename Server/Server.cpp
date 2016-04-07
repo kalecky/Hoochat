@@ -1,8 +1,3 @@
-///#include "PracticalSocket.h"    // For Socket, ServerSocket, and SocketException
-
-#include <iostream>             // For cout, cerr
-#include <cstdlib>              // For atoi, exit
-
 #include <sys/socket.h>
 #include <resolv.h>
 #include <openssl/ssl.h>
@@ -23,6 +18,7 @@ typedef unsigned char byte;
 
 const int PORT = 2015;
 const int INCOMING_STATIC_BUFFER = 10240;
+const int MAX_ALLOWED_LENGTH = 102400;
 
 const unsigned int RCVBUFSIZE = 32;     // Size of receiver buffer
 
@@ -149,7 +145,7 @@ bool HandlePacket (Packet& request, Packet& response) {
 	if (request.getType() == PacketType::LOGIN_REQUEST) {
 		response.setType(PacketType::LOGIN_RESPONSE);
 		if (request.getData().size() == 2 && (uid = db.logIn(request.getData()[0], request.getData()[1])) != -1) {
-			__uint64_t sid = (((__uint64_t) rand () << 32) | rand ());
+			__uint64_t sid = ((((__uint64_t) rand () & 0x77777777) << 32) | (rand () & 0x77777777));
 			sids [sid] = uid;
 			response.setSID(sid);
 			response.getData().push_back("1");
@@ -161,29 +157,33 @@ bool HandlePacket (Packet& request, Packet& response) {
 	auto it = sids.find(request.getSID());
 	if (it == sids.end ()) {
 		response.setType(request.getType() + 1);
+		response.setSID (0);
 		return true;
 	}
+	response.setSID(request.getSID());
 	uid = it-> second;
 	switch (request.getType()) {
 	case PacketType::LOGOUT_REQUEST:
 		response.setType(PacketType::LOGOUT_RESPONSE);
-		response.setSID(request.getSID());
 		sids.erase(request.getSID());
 		response.getData().push_back("1");
 		return true;
+	case PacketType::LATEST_REQUEST:
+		response.setType(PacketType::LATEST_RESPONSE);
+		response.getData().push_back(db.latestCheck(uid));
+		return true;
 	case PacketType::PULL_REQUEST:
 		response.setType(PacketType::PULL_RESPONSE);
-		response.setSID(response.getSID());
 		if (request.getData().size() == 1) {
 			try {
 				mid = stoi (request.getData()[0]);
-				response.getData().push_back(db.readMessage(uid, mid));
-			} catch (exception& ex) { }
+				string msg = db.readMessage(uid, mid);
+				response.getData().push_back(msg);
+			} catch (exception& ex) { printf ("%s\r\n", ex. what ()); }
 		}
 		return true;
 	case PacketType::REMOVE_REQUEST:
 		response.setType(PacketType::REMOVE_RESPONSE);
-		response.setSID(request.getSID());
 		if (request.getData().size() == 1) {
 			try {
 				mid = stoi (request.getData()[0]);
@@ -191,14 +191,13 @@ bool HandlePacket (Packet& request, Packet& response) {
 					response.getData().push_back("1");
 					return true;
 				}
-			} catch (exception& ex) { }
+			} catch (exception& ex) { printf ("%s\r\n", ex. what ()); }
 		}
 		response.getData().push_back("0");
 		return true;
 	case PacketType::SEND_REQUEST:
 		response.setType(PacketType::SEND_RESPONSE);
-		response.setSID(request.getSID());
-		if (request.getData().size() == 2 && db.sendMessage(uid, request.getData()[1], request.getData()[2])) {
+		if (request.getData().size() == 2 && db.sendMessage(uid, request.getData()[0], request.getData()[1])) {
 			response.getData().push_back("1");
 			return true;
 		}
@@ -206,9 +205,20 @@ bool HandlePacket (Packet& request, Packet& response) {
 		return true;
 	case PacketType::NEWMESSAGES_REQUEST:
 		response.setType(PacketType::NEWMESSAGES_RESPONSE);
-		response.setSID(request.getSID());
-		for (int id : db.listUnreadMessages(uid)) {
-			response.getData().push_back(to_string(id));
+		for (string id : db.listUnreadMessages(uid)) {
+			response.getData().push_back(id);
+		}
+		return true;
+	case PacketType::LISTMESSAGES_REQUEST:
+		response.setType(PacketType::LISTMESSAGES_RESPONSE);
+		for (string id : db.listAllMessages(uid)) {
+			response.getData().push_back(id);
+		}
+		return true;
+	case PacketType::LISTSENTMESSAGES_REQUEST:
+		response.setType(PacketType::LISTSENTMESSAGES_RESPONSE);
+		for (string id : db.listSentMessages(uid)) {
+			response.getData().push_back(id);
 		}
 		return true;
 	default:
@@ -224,31 +234,37 @@ void Servlet(SSL* ssl)	/* Serve the connection -- threadable */
 	byte header [16];
 	byte data [INCOMING_STATIC_BUFFER];
 
+	printf ("-> IN\r\n");
     if ( SSL_accept(ssl) == FAIL )					/* do SSL-protocol accept */
         ERR_print_errors_fp(stderr);
     else
     {							/* get any certificates */
     	Packet request (readHeader (ssl, header));
-    	if (request.getLength () <= INCOMING_STATIC_BUFFER) {
-        	request. parseData (readData (ssl, data, request. getLength ()), 0, request. getLength ());
-    	} else {
-    		byte* buffer = new byte [request. getLength ()];
-    		request. parseData (readData (ssl, data, request. getLength ()), 0, request. getLength ());
-    		delete [] buffer;
-    	}
+    	if (request. getLength () <= MAX_ALLOWED_LENGTH) {
+			if (request.getLength () <= INCOMING_STATIC_BUFFER) {
+				request. parseData (readData (ssl, data, request. getLength ()), 0, request. getLength ());
+			} else {
+				byte* buffer = new byte [request. getLength ()];
+				request. parseData (readData (ssl, data, request. getLength ()), 0, request. getLength ());
+				delete [] buffer;
+			}
+			printf ("R: %i %i %i %i\r\n", request. getLength (), request. getType (), (int) request. getSID (), request. getData (). size ());
 
-    	Packet response (0, 0);
-    	if (HandlePacket (request, response)) {
-    		byte* response_data = response. serialize ();
-    		SSL_write (ssl, response_data, response. getLength ());
-    		delete [] response_data;
-    	} else {
-            ERR_print_errors_fp(stderr);
+			Packet response (0, 0);
+			if (HandlePacket (request, response)) {
+				byte* response_data = response. serialize ();
+				SSL_write (ssl, response_data, response. getLength ());
+				delete [] response_data;
+				printf ("S: %i %i %i %i\r\n", response. getLength () - 16, response. getType (), (int) response. getSID (), response. getData (). size ());
+			} else {
+				ERR_print_errors_fp(stderr);
+			}
     	}
     }
     int sd = SSL_get_fd(ssl);							/* get socket connection */
     SSL_free(ssl);									/* release SSL state */
     close(sd);										/* close connection */
+	printf ("<- OUT\r\n");
 }
 
 /*---------------------------------------------------------------------*/

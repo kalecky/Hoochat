@@ -15,6 +15,7 @@ public class Packet {
 	public Packet (long SID, int type) {
 		setSID (SID);
 		setType (type);
+		data = new ArrayList<> ();
 	}
 	public Packet (long SID, int type, String [] data) {
 		this (SID, type);
@@ -52,7 +53,7 @@ public class Packet {
 	
 	// Initializes packet based on its 16-byte header data
 	static public Packet initialize (byte[] header) {
-		return header. length >= 16 ? new Packet (header [0] | (header [1] << 8) | (header [2] << 16) | (header [3] << 24) | (header [4] << 32) | (header [5] << 40) | (header [6] << 48) | (header [7] << 56), (header [8] | (header [9] << 8) | (header [10] << 16) | (header [11] << 24)), header [12] | (header [13] << 8) | (header [14] << 16) | (header [15] << 24)) : null;
+		return header. length >= 16 ? new Packet (header [0] | (((long) 0 | header [1]) << 8) | (((long) 0 | header [2]) << 16) | (((long) 0 | header [3]) << 24) | (((long) 0 | header [4]) << 32) | (((long) 0 | header [5]) << 40) | (((long) 0 | header [6]) << 48) | (((long) 0 | header [7]) << 56), (int) (((long) 0 | header [8]) | (((long) 0 | header [9]) << 8) | (((long) 0 | header [10]) << 16) | (((long) 0 | header [11]) << 24)), (int) (((long) 0 | (header [12] >= 0 ? header [12] : header [12] + 256)) | (((long) 0 | (header [13] >= 0 ? header [13] : header [13] + 256)) << 8) | (((long) 0 | (header [14] >= 0 ? header [14] : header [14] + 256)) << 16) | (((long) 0 | (header [15] >= 0 ? header [15] : header [15] + 256)) << 24))) : null;
 	}
 	
 	// Reads and decodes packet data
@@ -100,14 +101,14 @@ public class Packet {
 			}
 		}
 		byte[] message = new byte[message_length];
-		message [0] = (byte) (SID >> 0);
-		message [1] = (byte) (SID >> 8);
-		message [2] = (byte) (SID >> 16);
-		message [3] = (byte) (SID >> 24);
-		message [4] = (byte) (SID >> 32);
-		message [5] = (byte) (SID >> 40);
-		message [6] = (byte) (SID >> 48);
-		message [7] = (byte) (SID >> 56);
+		message [0] = (byte) (0xff & (SID >> 0)); 
+		message [1] = (byte) (0xff & (SID >> 8));
+		message [2] = (byte) (0xff & (SID >> 16));
+		message [3] = (byte) (0xff & (SID >> 24));
+		message [4] = (byte) (0xff & (SID >> 32));
+		message [5] = (byte) (0xff & (SID >> 40));
+		message [6] = (byte) (0xff & (SID >> 48));
+		message [7] = (byte) (0xff & (SID >> 56));
 		message [8] = (byte) (type >> 0);
 		message [9] = (byte) (type >> 8);
 		message [10] = (byte) (type >> 16);

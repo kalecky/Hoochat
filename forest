@@ -1,0 +1,8 @@
+#!/bin/bash
+
+path=$(pwd)
+
+cd ./Client/bin
+java -Djavax.net.ssl.trustStore=public.jks -classpath . edu.baylor.cs.hoochat.MessageClient 192.168.5.62 2015
+
+cd $(path)
